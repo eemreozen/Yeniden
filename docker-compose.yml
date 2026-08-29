@@ -1,0 +1,202 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: yeniden-postgres
+    environment:
+      POSTGRES_DB: yeniden_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d yeniden_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: yeniden-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: yeniden-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: yeniden-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - IDENTITY_HOST=identity-service
+      - CATALOG_HOST=catalog-service
+      - EXCHANGE_HOST=exchange-service
+      - ECOCOIN_HOST=ecocoin-service
+      - GAMIFICATION_HOST=gamification-service
+      - WASTEAI_HOST=wasteai-service
+    depends_on:
+      - identity-service
+      - catalog-service
+      - exchange-service
+      - ecocoin-service
+      - gamification-service
+      - wasteai-service
+
+  identity-service:
+    build:
+      context: ./identity-service
+      dockerfile: Dockerfile
+    container_name: yeniden-identity-service
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=yeniden_db
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  catalog-service:
+    build:
+      context: ./catalog-service
+      dockerfile: Dockerfile
+    container_name: yeniden-catalog-service
+    ports:
+      - "8082:8082"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=yeniden_db
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  exchange-service:
+    build:
+      context: ./exchange-service
+      dockerfile: Dockerfile
+    container_name: yeniden-exchange-service
+    ports:
+      - "8083:8083"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=yeniden_db
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  ecocoin-service:
+    build:
+      context: ./ecocoin-service
+      dockerfile: Dockerfile
+    container_name: yeniden-ecocoin-service
+    ports:
+      - "8084:8084"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=yeniden_db
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  gamification-service:
+    build:
+      context: ./gamification-service
+      dockerfile: Dockerfile
+    container_name: yeniden-gamification-service
+    ports:
+      - "8085:8085"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=yeniden_db
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  wasteai-service:
+    build:
+      context: ./wasteai-service
+      dockerfile: Dockerfile
+    container_name: yeniden-wasteai-service
+    ports:
+      - "8086:8086"
+
+volumes:
+  postgres_data:

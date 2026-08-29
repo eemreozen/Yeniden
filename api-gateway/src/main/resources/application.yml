@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        - id: identity-service
+          uri: http://${IDENTITY_HOST:identity-service}:8081
+          predicates:
+            - Path=/api/v1/identity/**
+
+        - id: catalog-service
+          uri: http://${CATALOG_HOST:catalog-service}:8082
+          predicates:
+            - Path=/api/v1/catalog/**
+
+        - id: exchange-service
+          uri: http://${EXCHANGE_HOST:exchange-service}:8083
+          predicates:
+            - Path=/api/v1/exchange/**
+
+        - id: ecocoin-service
+          uri: http://${ECOCOIN_HOST:ecocoin-service}:8084
+          predicates:
+            - Path=/api/v1/ecocoin/**
+
+        - id: gamification-service
+          uri: http://${GAMIFICATION_HOST:gamification-service}:8085
+          predicates:
+            - Path=/api/v1/gamification/**
+
+        - id: wasteai-service
+          uri: http://${WASTEAI_HOST:wasteai-service}:8086
+          predicates:
+            - Path=/api/v1/wasteai/**

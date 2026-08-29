@@ -1,0 +1,75 @@
+# ==========================================
+# Maven Build Outputs
+# ==========================================
+target/
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+
+# ==========================================
+# IDE & Editor Specific Files
+# ==========================================
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+bin/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+
+# ==========================================
+# Logs & Temporary Files
+# ==========================================
+*.log
+logs/
+**/logs/
+*.sys
+*.tmp
+*.bak
+*.swp
+
+# ==========================================
+# OS & System Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==========================================
+# Environment & Secrets
+# ==========================================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.pem
+*.key
