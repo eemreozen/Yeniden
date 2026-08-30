@@ -1,0 +1,48 @@
+# REST Client / IntelliJ HTTP Client taslağı.
+# Gerçek değerleri Git'e yazmayın; değişkenleri yerel/private environment'tan verin.
+@baseUrl = http://127.0.0.1:8080
+@phone = REPLACE_WITH_ALLOWED_E164
+@challengeId = REPLACE_WITH_RESPONSE_UUID
+@otp = REPLACE_WITH_RECEIVED_SMS
+@accessToken = REPLACE_WITH_ACCESS_TOKEN
+@refreshToken = REPLACE_WITH_REFRESH_TOKEN
+@userId = REPLACE_WITH_JWT_SUB
+
+### 202; yanıtta OTP yok
+POST {{baseUrl}}/api/v1/auth/otp/request
+Content-Type: application/json
+
+{"phone":"{{phone}}"}
+
+### 200; OTP bu çağrıda tüketilir
+POST {{baseUrl}}/api/v1/auth/otp/verify
+Content-Type: application/json
+
+{"phone":"{{phone}}","code":"{{otp}}","challengeId":"{{challengeId}}"}
+
+### Private profil
+GET {{baseUrl}}/api/v1/users/me
+Authorization: Bearer {{accessToken}}
+
+### Public profil; telefon/e-posta/konum yok
+GET {{baseUrl}}/api/v1/users/{{userId}}
+
+### İzinli profil alanı
+PATCH {{baseUrl}}/api/v1/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"displayName":"Sunum Kullanıcısı"}
+
+### Rotasyon: dönen refresh'i kaydet; eskisini tekrar kullanmak TÜM oturumları iptal eder
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{"refreshToken":"{{refreshToken}}"}
+
+### 204; mevcut session iptal edilir
+POST {{baseUrl}}/api/v1/auth/logout
+Content-Type: application/json
+
+{"refreshToken":"{{refreshToken}}"}
+

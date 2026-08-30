@@ -1,15 +1,14 @@
 package com.yeniden.identity.service;
 
-import com.yeniden.identity.dto.RegisterRequest;
+import com.yeniden.identity.auth.TokenResponse;
+import com.yeniden.identity.dto.PublicUserDto;
+import com.yeniden.identity.dto.UpdateProfileRequest;
 import com.yeniden.identity.dto.UserDto;
-
 import java.util.UUID;
 
-/**
- * Kullanıcı işlemlerinin iş mantığı (Business Logic) sözleşmesi.
- */
 public interface UserService {
-    UserDto registerOrLogin(RegisterRequest request);
-    UserDto getUserById(UUID id);
-    UserDto getUserByPhone(String phone);
+    TokenResponse loginVerifiedPhone(String normalizedPhone);
+    UserDto getMe(UUID id);
+    UserDto updateProfile(UUID id, UpdateProfileRequest request);
+    PublicUserDto getPublicProfile(UUID id);
 }

@@ -1,5 +1,6 @@
 server:
   port: 8081
+  forward-headers-strategy: none
 
 spring:
   application:
@@ -12,21 +13,50 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
         default_schema: identity
 
+  flyway:
+    enabled: true
+    default-schema: identity
+    schemas: identity
+    create-schemas: true
+    baseline-on-migrate: false
+
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      timeout: 2s
+      connect-timeout: 2s
 
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASS:guest}
+
+identity:
+  otp:
+    secret: ${OTP_HMAC_SECRET:}
+  tokens:
+    issuer: ${JWT_ISSUER:}
+    audience: ${JWT_AUDIENCE:yeniden-api}
+  sms-gate:
+    enabled: ${SMS_GATE_ENABLED:false}
+    base-url: ${SMS_GATE_BASE_URL:}
+    username: ${SMS_GATE_USERNAME:}
+    password: ${SMS_GATE_PASSWORD:}
+    allow-private-http: ${SMS_GATE_ALLOW_PRIVATE_HTTP:false}
+    allow-all-recipients: ${SMS_GATE_ALLOW_ALL_RECIPIENTS:false}
+    allowed-recipients: ${SMS_GATE_ALLOWED_RECIPIENTS:}

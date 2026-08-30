@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -27,5 +27,5 @@ public class UserDto {
     private UUID neighborhoodId;
     private UserStatus status;
     private int trustScore;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }
