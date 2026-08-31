@@ -9,9 +9,9 @@ spring:
     gateway:
       routes:
         - id: identity-service
-          uri: http://${IDENTITY_HOST:identity-service}:8081
+          uri: http://${IDENTITY_HOST:identity-service}:${IDENTITY_PORT:8081}
           predicates:
-            - Path=/api/v1/identity/**
+            - Path=/api/v1/identity/**,/api/v1/auth/**,/api/v1/users/**
 
         - id: catalog-service
           uri: http://${CATALOG_HOST:catalog-service}:8082

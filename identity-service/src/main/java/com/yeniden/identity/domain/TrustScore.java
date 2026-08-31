@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -48,12 +48,12 @@ public class TrustScore {
     private int reportCount = 0;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     @PreUpdate
     protected void onSave() {
-        this.updatedAt = LocalDateTime.now();
+        if (this.updatedAt == null) this.updatedAt = Instant.now();
         // Skoru 0 ile 100 arasında sınırla
         if (this.score < 0) this.score = 0;
         if (this.score > 100) this.score = 100;

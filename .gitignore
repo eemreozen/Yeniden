@@ -73,3 +73,5 @@ Thumbs.db
 .env.production
 *.pem
 *.key
+.mvn/.cache/
+.env.*.local

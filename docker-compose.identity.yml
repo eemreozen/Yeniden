@@ -1,0 +1,32 @@
+# Isolated local identity infrastructure; does not reuse the main project's volumes.
+name: yeniden-identity-local
+services:
+  postgres:
+    image: postgres:16-alpine
+    platform: linux/arm64
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: identity_local
+      POSTGRES_USER: identity_local
+      POSTGRES_PASSWORD: ${IDENTITY_LOCAL_DB_PASSWORD:?Set a local development database password}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - identity-local-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U identity_local -d identity_local"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:56379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  identity-local-db:

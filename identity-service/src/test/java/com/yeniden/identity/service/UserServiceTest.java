@@ -1,123 +1,88 @@
 package com.yeniden.identity.service;
 
 import com.yeniden.common.exception.BaseException;
-import com.yeniden.identity.domain.TrustScore;
-import com.yeniden.identity.domain.User;
-import com.yeniden.identity.domain.UserStatus;
-import com.yeniden.identity.dto.RegisterRequest;
-import com.yeniden.identity.dto.UserDto;
-import com.yeniden.identity.repository.TrustScoreRepository;
-import com.yeniden.identity.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import com.yeniden.identity.auth.*;
+import com.yeniden.identity.domain.*;
+import com.yeniden.identity.dto.UpdateProfileRequest;
+import com.yeniden.identity.repository.*;
+import java.time.*;
+import java.util.*;
+import org.junit.jupiter.api.*;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-@ExtendWith(MockitoExtension.class)
 class UserServiceTest {
+    UserRepository users = mock(UserRepository.class);
+    TrustScoreRepository scores = mock(TrustScoreRepository.class);
+    AuthUserLockRepository locks = mock(AuthUserLockRepository.class);
+    AuthSessionService sessions = mock(AuthSessionService.class);
+    Clock clock = Clock.fixed(Instant.parse("2026-08-30T10:00:00Z"), ZoneOffset.UTC);
+    UserServiceImpl service = new UserServiceImpl(users, scores, locks, sessions, clock);
+    UUID id = UUID.randomUUID();
+    User user = User.builder().id(id).phone("+905551234567").displayName("Ada")
+            .createdAt(clock.instant()).status(UserStatus.ACTIVE).build();
 
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private TrustScoreRepository trustScoreRepository;
-
-    @InjectMocks
-    private UserServiceImpl userService;
-
-    private RegisterRequest registerRequest;
-    private User user;
-    private TrustScore trustScore;
-
-    @BeforeEach
-    void setUp() {
-        registerRequest = new RegisterRequest();
-        registerRequest.setPhone("05551112233");
-        registerRequest.setDisplayName("Ahmet Yılmaz");
-        registerRequest.setEmail("ahmet@example.com");
-
-        UUID userId = UUID.randomUUID();
-        user = User.builder()
-                .id(userId)
-                .phone("05551112233")
-                .displayName("Ahmet Yılmaz")
-                .email("ahmet@example.com")
-                .status(UserStatus.ACTIVE)
-                .build();
-
-        trustScore = TrustScore.builder()
-                .userId(userId)
-                .score(50)
-                .build();
+    @Test void verifiedRegistrationPersistsBeforeIssuingSession() {
+        when(users.findByPhone(user.getPhone())).thenReturn(Optional.empty());
+        when(users.saveAndFlush(any())).thenAnswer(call -> {
+            User created = call.getArgument(0);
+            created.setId(id);
+            assertThat(created.getPhoneVerifiedAt()).isEqualTo(clock.instant());
+            assertThat(created.getRoles()).containsExactly(UserRole.USER);
+            return created;
+        });
+        service.loginVerifiedPhone(user.getPhone());
+        var order = inOrder(users, scores, sessions);
+        order.verify(users).findByPhone(user.getPhone());
+        order.verify(users).saveAndFlush(any());
+        order.verify(scores).saveAndFlush(argThat(score -> score.getScore() == 50 && score.getUserId().equals(id)));
+        order.verify(sessions).issue(argThat(u -> u.getId().equals(id)), eq(true));
     }
 
-    @Test
-    @DisplayName("Yeni kullanıcı kayıt/giriş yapma senaryosu")
-    void registerOrLogin_NewUser_Success() {
-        when(userRepository.findByPhone("05551112233")).thenReturn(Optional.empty());
-        when(userRepository.save(any(User.class))).thenReturn(user);
-        when(trustScoreRepository.save(any(TrustScore.class))).thenReturn(trustScore);
-
-        UserDto result = userService.registerOrLogin(registerRequest);
-
-        assertNotNull(result);
-        assertEquals("05551112233", result.getPhone());
-        assertEquals("Ahmet Yılmaz", result.getDisplayName());
-        assertEquals(50, result.getTrustScore());
-
-        verify(userRepository).save(any(User.class));
-        verify(trustScoreRepository).save(any(TrustScore.class));
+    @Test void existingUserIsLockedAndReverifiedWithoutCreatingAnotherTrustRow() {
+        when(users.findByPhone(user.getPhone())).thenReturn(Optional.of(user));
+        when(locks.lockById(id)).thenReturn(Optional.of(user));
+        service.loginVerifiedPhone(user.getPhone());
+        assertThat(user.getPhoneVerifiedAt()).isEqualTo(clock.instant());
+        verify(sessions).issue(user, false);
+        verifyNoInteractions(scores);
     }
 
-    @Test
-    @DisplayName("Var olan telefon ile giriş yapma senaryosu")
-    void registerOrLogin_ExistingUser_Success() {
-        when(userRepository.findByPhone("05551112233")).thenReturn(Optional.of(user));
-        when(trustScoreRepository.findById(user.getId())).thenReturn(Optional.of(trustScore));
-
-        UserDto result = userService.registerOrLogin(registerRequest);
-
-        assertNotNull(result);
-        assertEquals("05551112233", result.getPhone());
-        assertEquals(50, result.getTrustScore());
+    @Test void inactiveAccountsCannotLoginOrUpdate() {
+        for (UserStatus state : List.of(UserStatus.SUSPENDED, UserStatus.DELETED)) {
+            user.setStatus(state);
+            when(users.findByPhone(user.getPhone())).thenReturn(Optional.of(user));
+            when(locks.lockById(id)).thenReturn(Optional.of(user));
+            assertThatThrownBy(() -> service.loginVerifiedPhone(user.getPhone())).isInstanceOf(BaseException.class);
+            assertThatThrownBy(() -> service.updateProfile(id, new UpdateProfileRequest("New name", null)))
+                    .isInstanceOf(BaseException.class);
+        }
+        verifyNoInteractions(sessions);
     }
 
-    @Test
-    @DisplayName("ID ile var olan kullanıcıyı başarıyla getirme")
-    void getUserById_Success() {
-        UUID userId = user.getId();
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(trustScoreRepository.findById(userId)).thenReturn(Optional.of(trustScore));
-
-        UserDto result = userService.getUserById(userId);
-
-        assertNotNull(result);
-        assertEquals(userId, result.getId());
-        assertEquals(50, result.getTrustScore());
+    @Test void publicDtoHasOnlyPublicFields() {
+        when(users.findById(id)).thenReturn(Optional.of(user));
+        when(scores.findById(id)).thenReturn(Optional.of(TrustScore.builder().userId(id).score(50).build()));
+        var dto = service.getPublicProfile(id);
+        assertThat(dto.displayName()).isEqualTo("Ada");
+        assertThat(Arrays.stream(dto.getClass().getRecordComponents()).map(c -> c.getName()).toList())
+                .containsExactly("id", "displayName", "avatarKey", "trustScore");
     }
 
-    @Test
-    @DisplayName("Var olmayan ID ile kullanıcı arandığında NOT_FOUND fırlatmalı")
-    void getUserById_NotFound_ThrowsException() {
-        UUID userId = UUID.randomUUID();
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+    @Test void missingTrustIsNotReportedAsFabricatedScore() {
+        when(users.findById(id)).thenReturn(Optional.of(user));
+        when(scores.findById(id)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.getMe(id)).isInstanceOf(BaseException.class)
+                .extracting("httpStatus").isEqualTo(503);
+    }
 
-        BaseException exception = assertThrows(BaseException.class, () -> userService.getUserById(userId));
-
-        assertEquals("USER_NOT_FOUND", exception.getErrorCode());
-        assertEquals(404, exception.getHttpStatus());
+    @Test void profileUpdateUsesClockAndDoesNotChangePhone() {
+        when(locks.lockById(id)).thenReturn(Optional.of(user));
+        when(scores.findById(id)).thenReturn(Optional.of(TrustScore.builder().userId(id).score(50).build()));
+        service.updateProfile(id, new UpdateProfileRequest(" Deniz ", "avatars/test.png"));
+        assertThat(user.getDisplayName()).isEqualTo("Deniz");
+        assertThat(user.getPhone()).isEqualTo("+905551234567");
+        assertThat(user.getUpdatedAt()).isEqualTo(clock.instant());
     }
 }
