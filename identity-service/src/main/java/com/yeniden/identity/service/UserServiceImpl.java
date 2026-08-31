@@ -69,6 +69,14 @@ public class UserServiceImpl implements UserService {
         return new PublicUserDto(user.getId(), user.getDisplayName(), user.getAvatarKey(), score(id));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public AccountCreatedAtDto getAccountCreatedAt(UUID id) {
+        User user = users.findById(id).orElseThrow(this::notFound);
+        requireActive(user);
+        return new AccountCreatedAtDto(user.getId(), user.getCreatedAt());
+    }
+
     private int score(UUID id) {
         return scores.findById(id).map(TrustScore::getScore)
                 .orElseThrow(() -> new BaseException("Profil geçici olarak kullanılamıyor", "service_unavailable", 503));

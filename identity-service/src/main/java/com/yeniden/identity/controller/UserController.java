@@ -31,4 +31,10 @@ public class UserController {
     public ApiResponse<PublicUserDto> profile(@PathVariable UUID id) {
         return ApiResponse.success(users.getPublicProfile(id));
     }
+
+    /** Downstream services use this immutable timestamp for account-age rules. */
+    @GetMapping("/{id}/account-created-at")
+    public ApiResponse<AccountCreatedAtDto> accountCreatedAt(@PathVariable UUID id) {
+        return ApiResponse.success(users.getAccountCreatedAt(id));
+    }
 }

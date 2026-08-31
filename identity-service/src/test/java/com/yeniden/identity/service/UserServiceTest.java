@@ -77,6 +77,17 @@ class UserServiceTest {
                 .extracting("httpStatus").isEqualTo(503);
     }
 
+    @Test void accountCreatedAtComesFromIdentityUserAndDoesNotDependOnWalletData() {
+        when(users.findById(id)).thenReturn(Optional.of(user));
+
+        var dto = service.getAccountCreatedAt(id);
+
+        assertThat(dto.userId()).isEqualTo(id);
+        assertThat(dto.accountCreatedAt()).isEqualTo(user.getCreatedAt());
+        verify(users).findById(id);
+        verifyNoInteractions(scores, locks, sessions);
+    }
+
     @Test void profileUpdateUsesClockAndDoesNotChangePhone() {
         when(locks.lockById(id)).thenReturn(Optional.of(user));
         when(scores.findById(id)).thenReturn(Optional.of(TrustScore.builder().userId(id).score(50).build()));
