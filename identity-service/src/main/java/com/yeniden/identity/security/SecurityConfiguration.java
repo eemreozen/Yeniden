@@ -31,6 +31,8 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/users/me").authenticated()
                         .requestMatchers(new RegexRequestMatcher(
                                 "/api/v1/users/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", "GET")).permitAll()
+                        .requestMatchers(new RegexRequestMatcher(
+                                "/api/v1/users/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/account-created-at", "GET")).permitAll()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(converter))
                         .authenticationEntryPoint((req, res, ex) -> problems.write(res, 401, "unauthorized"))
@@ -42,4 +44,3 @@ public class SecurityConfiguration {
                 .build();
     }
 }
-
