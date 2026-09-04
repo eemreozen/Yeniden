@@ -1,12 +1,18 @@
 package com.yeniden.catalog.service;
 
+import com.yeniden.catalog.config.RabbitMQConfig;
+import com.yeniden.common.event.ListingPublishedEvent;
 import com.yeniden.common.exception.BaseException;
 import com.yeniden.catalog.domain.Listing;
 import com.yeniden.catalog.domain.ListingStatus;
+import com.yeniden.catalog.domain.QuantityBand;
 import com.yeniden.catalog.dto.ListingCreateRequest;
 import com.yeniden.catalog.dto.ListingDto;
+import com.yeniden.catalog.dto.ListingUpdateRequest;
 import com.yeniden.catalog.repository.ListingRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,11 +25,16 @@ import java.util.stream.Collectors;
 /**
  * İlan iş mantığı gerçeklemesi (Business Logic Implementation).
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ListingServiceImpl implements ListingService {
 
+    private static final double EARTH_RADIUS_METERS = 6_371_000.0;
+
     private final ListingRepository listingRepository;
+    private final CategoryService categoryService;
+    private final RabbitTemplate rabbitTemplate;
     private final Random random = new Random();
 
     @Override
@@ -61,7 +72,24 @@ public class ListingServiceImpl implements ListingService {
         listing.setExpiresAt(LocalDateTime.now().plusDays(21)); // 21 gün geçerli
 
         Listing updated = listingRepository.save(listing);
+        publishListingPublishedEvent(updated);
         return mapToDto(updated);
+    }
+
+    private void publishListingPublishedEvent(Listing listing) {
+        try {
+            ListingPublishedEvent event = ListingPublishedEvent.builder()
+                    .listingId(listing.getId())
+                    .ownerId(listing.getOwnerId())
+                    .categoryId(listing.getCategoryId())
+                    .publishedAt(listing.getPublishedAt())
+                    .build();
+
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.LISTING_PUBLISHED_ROUTING_KEY, event);
+        } catch (Exception e) {
+            // RabbitMQ gönderim hatası ilan yayınlama akışını bozmamalıdır
+            log.error("ListingPublished event gönderme hatası: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -84,21 +112,110 @@ public class ListingServiceImpl implements ListingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ListingDto> searchNearby(double lat, double lon, double radiusKm) {
-        // Yaklaşık derece sapma hesabı (1 derece ~ 111 km)
-        double latDelta = radiusKm / 111.0;
-        double lonDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
+    public List<ListingDto> searchNearby(double lat, double lon, double radiusMeters, UUID categoryId,
+                                          QuantityBand quantityBand, String query, String sort, int limit) {
+        List<UUID> categoryIds = categoryId != null ? categoryService.getSubtreeIds(categoryId) : null;
 
-        return listingRepository.findNearbyListings(
-                        ListingStatus.PUBLISHED,
-                        lat - latDelta, lat + latDelta,
-                        lon - lonDelta, lon + lonDelta
-                ).stream()
+        return listingRepository.searchNearby(lat, lon, radiusMeters, categoryIds, quantityBand, query, sort, limit)
+                .stream()
+                .map(listing -> mapToDto(listing, distanceMetersRoundedTo100(lat, lon,
+                        listing.getApproxLatitude(), listing.getApproxLongitude())))
+                .collect(Collectors.toList());
+    }
+
+    /** Haversine (great-circle) mesafe hesabı; 05-api.md gereği sonuç 100 m'ye yuvarlanır. */
+    private static int distanceMetersRoundedTo100(double lat1, double lon1, double lat2, double lon2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        double meters = EARTH_RADIUS_METERS * c;
+        return (int) Math.round(meters / 100.0) * 100;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ListingDto> getListingsByOwner(UUID ownerId, ListingStatus status) {
+        List<Listing> listings = status != null
+                ? listingRepository.findByOwnerIdAndStatus(ownerId, status)
+                : listingRepository.findByOwnerId(ownerId);
+
+        return listings.stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public ListingDto withdrawListing(UUID id, UUID ownerId) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new BaseException("İlan bulunamadı!", "LISTING_NOT_FOUND", 404));
+
+        if (!listing.getOwnerId().equals(ownerId)) {
+            throw new BaseException("Bu ilanı geri çekme yetkiniz yok!", "FORBIDDEN", 403);
+        }
+        if (listing.getStatus() != ListingStatus.PUBLISHED) {
+            throw new BaseException("Yalnızca yayındaki ilanlar geri çekilebilir!", "LISTING_NOT_PUBLISHED", 409);
+        }
+
+        listing.setStatus(ListingStatus.WITHDRAWN);
+        Listing updated = listingRepository.save(listing);
+        return mapToDto(updated);
+    }
+
+    @Override
+    @Transactional
+    public ListingDto updateListing(UUID id, UUID ownerId, ListingUpdateRequest request) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new BaseException("İlan bulunamadı!", "LISTING_NOT_FOUND", 404));
+
+        if (!listing.getOwnerId().equals(ownerId)) {
+            throw new BaseException("Bu ilanı güncelleme yetkiniz yok!", "FORBIDDEN", 403);
+        }
+        if (listing.getStatus() != ListingStatus.DRAFT && listing.getStatus() != ListingStatus.PUBLISHED) {
+            throw new BaseException("İlan yalnızca taslak veya yayın durumundayken güncellenebilir!", "LISTING_NOT_EDITABLE", 409);
+        }
+
+        if (request.getTitle() != null) listing.setTitle(request.getTitle());
+        if (request.getDescription() != null) listing.setDescription(request.getDescription());
+        if (request.getQuantityBand() != null) listing.setQuantityBand(request.getQuantityBand());
+        if (request.getCondition() != null) listing.setCondition(request.getCondition());
+
+        Listing updated = listingRepository.save(listing);
+        return mapToDto(updated);
+    }
+
+    @Override
+    @Transactional
+    public ListingDto reserveListing(UUID id, UUID requestId) {
+        int updated = listingRepository.reserveIfCurrentStatus(id, requestId, ListingStatus.RESERVED, ListingStatus.PUBLISHED);
+        if (updated == 0) {
+            throw new BaseException("İlan artık müsait değil!", "LISTING_NOT_AVAILABLE", 409);
+        }
+        return getListingById(id);
+    }
+
+    @Override
+    @Transactional
+    public ListingDto releaseReservation(UUID id) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new BaseException("İlan bulunamadı!", "LISTING_NOT_FOUND", 404));
+
+        if (listing.getStatus() == ListingStatus.RESERVED) {
+            listing.setStatus(ListingStatus.PUBLISHED);
+            listing.setReservedRequestId(null);
+            listing = listingRepository.save(listing);
+        }
+        return mapToDto(listing);
+    }
+
     private ListingDto mapToDto(Listing listing) {
+        return mapToDto(listing, null);
+    }
+
+    private ListingDto mapToDto(Listing listing, Integer distanceMeters) {
         return ListingDto.builder()
                 .id(listing.getId())
                 .ownerId(listing.getOwnerId())
@@ -114,6 +231,7 @@ public class ListingServiceImpl implements ListingService {
                 .publishedAt(listing.getPublishedAt())
                 .expiresAt(listing.getExpiresAt())
                 .createdAt(listing.getCreatedAt())
+                .distanceMeters(distanceMeters)
                 .build();
     }
 }
