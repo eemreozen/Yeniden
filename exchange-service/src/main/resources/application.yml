@@ -13,12 +13,20 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         default_schema: exchange
+
+  flyway:
+    enabled: true
+    create-schemas: true
+    default-schema: exchange
+    schemas: exchange
+    baseline-on-migrate: true
+    baseline-version: 0
 
   data:
     redis:
@@ -30,3 +38,8 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASS:guest}
+
+catalog:
+  base-url: ${CATALOG_BASE_URL:http://localhost:8082}
+  connect-timeout-ms: ${CATALOG_CONNECT_TIMEOUT_MS:1500}
+  read-timeout-ms: ${CATALOG_READ_TIMEOUT_MS:2500}

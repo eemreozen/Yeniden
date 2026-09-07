@@ -13,12 +13,20 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         default_schema: ecocoin
+
+  flyway:
+    enabled: true
+    create-schemas: true
+    default-schema: ecocoin
+    schemas: ecocoin
+    baseline-on-migrate: true
+    baseline-version: 0
 
   data:
     redis:

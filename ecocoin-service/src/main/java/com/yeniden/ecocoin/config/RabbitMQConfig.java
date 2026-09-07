@@ -43,7 +43,9 @@ public class RabbitMQConfig {
     @Bean
     public Queue handoverQueue() {
         return new Queue(HANDOVER_QUEUE, true, false, false,
-                java.util.Map.of("x-dead-letter-exchange", DEAD_LETTER_EXCHANGE));
+                java.util.Map.of(
+                        "x-dead-letter-exchange", DEAD_LETTER_EXCHANGE,
+                        "x-dead-letter-routing-key", HANDOVER_QUEUE));
     }
 
     @Bean
@@ -74,7 +76,9 @@ public class RabbitMQConfig {
     @Bean
     public Queue questCompletedQueue() {
         return new Queue(QUEST_COMPLETED_QUEUE, true, false, false,
-                java.util.Map.of("x-dead-letter-exchange", DEAD_LETTER_EXCHANGE));
+                java.util.Map.of(
+                        "x-dead-letter-exchange", DEAD_LETTER_EXCHANGE,
+                        "x-dead-letter-routing-key", QUEST_COMPLETED_QUEUE));
     }
 
     @Bean

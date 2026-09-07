@@ -2,6 +2,7 @@ package com.yeniden.catalog.service;
 
 import com.yeniden.catalog.dto.ListingCreateRequest;
 import com.yeniden.catalog.dto.ListingDto;
+import com.yeniden.catalog.dto.ListingRewardContextDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,6 +14,7 @@ public interface ListingService {
     ListingDto createListing(ListingCreateRequest request);
     ListingDto publishListing(UUID id);
     ListingDto getListingById(UUID id);
+    ListingRewardContextDto getRewardContext(UUID id);
     List<ListingDto> getAllPublishedListings();
     List<ListingDto> searchNearby(double lat, double lon, double radiusKm);
 }

@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -46,6 +47,19 @@ public class Handover {
 
     @Column(name = "receiver_id", nullable = false)
     private UUID receiverId;
+
+    @Column(name = "category_id", nullable = false)
+    private UUID categoryId;
+
+    @Column(name = "category_coin_multiplier", nullable = false, precision = 4, scale = 2)
+    private BigDecimal categoryCoinMultiplier;
+
+    @Column(name = "quantity_band", nullable = false, length = 20)
+    private String quantityBand;
+
+    @Builder.Default
+    @Column(name = "review_required", nullable = false)
+    private boolean reviewRequired = false;
 
     @Column(name = "confirmation_code_hash", nullable = false, length = 64)
     private String confirmationCodeHash;

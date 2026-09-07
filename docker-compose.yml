@@ -132,6 +132,7 @@ services:
       - REDIS_PORT=6379
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
+      - CATALOG_BASE_URL=http://catalog-service:8082
     depends_on:
       postgres:
         condition: service_healthy
@@ -139,6 +140,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      catalog-service:
+        condition: service_started
 
   ecocoin-service:
     build:
@@ -157,6 +160,7 @@ services:
       - REDIS_PORT=6379
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
+      - IDENTITY_BASE_URL=http://identity-service:8081
     depends_on:
       postgres:
         condition: service_healthy
@@ -164,6 +168,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      identity-service:
+        condition: service_started
 
   gamification-service:
     build:

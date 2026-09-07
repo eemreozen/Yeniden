@@ -1,11 +1,14 @@
 package com.yeniden.catalog.service;
 
 import com.yeniden.catalog.domain.ItemCondition;
+import com.yeniden.catalog.domain.ItemCategory;
 import com.yeniden.catalog.domain.Listing;
 import com.yeniden.catalog.domain.ListingStatus;
 import com.yeniden.catalog.domain.QuantityBand;
 import com.yeniden.catalog.dto.ListingCreateRequest;
 import com.yeniden.catalog.dto.ListingDto;
+import com.yeniden.catalog.dto.ListingRewardContextDto;
+import com.yeniden.catalog.repository.ItemCategoryRepository;
 import com.yeniden.catalog.repository.ListingRepository;
 import com.yeniden.common.exception.BaseException;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +34,9 @@ class CatalogServiceTest {
 
     @Mock
     private ListingRepository listingRepository;
+
+    @Mock
+    private ItemCategoryRepository itemCategoryRepository;
 
     @InjectMocks
     private ListingServiceImpl listingService;
@@ -102,5 +108,40 @@ class CatalogServiceTest {
 
         assertEquals("LISTING_NOT_FOUND", exception.getErrorCode());
         assertEquals(404, exception.getHttpStatus());
+    }
+
+    @Test
+    @DisplayName("İlan ödül bağlamı kategori katsayısıyla birlikte döner")
+    void getRewardContext_Success() {
+        ItemCategory category = ItemCategory.builder()
+                .id(categoryId)
+                .code("WOOD")
+                .name("Ahşap")
+                .coinMultiplier(1.5)
+                .build();
+        when(listingRepository.findById(listing.getId())).thenReturn(Optional.of(listing));
+        when(itemCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+
+        ListingRewardContextDto result = listingService.getRewardContext(listing.getId());
+
+        assertEquals(listing.getId(), result.listingId());
+        assertEquals(listing.getOwnerId(), result.ownerId());
+        assertEquals(categoryId, result.categoryId());
+        assertEquals("1.5", result.categoryCoinMultiplier().toPlainString());
+        assertEquals("SINGLE", result.quantityBand());
+        assertEquals("PUBLISHED", result.listingStatus());
+    }
+
+    @Test
+    @DisplayName("Kategori bulunamazsa ödül bağlamı varsayılan katsayı üretmez")
+    void getRewardContext_CategoryNotFound() {
+        when(listingRepository.findById(listing.getId())).thenReturn(Optional.of(listing));
+        when(itemCategoryRepository.findById(categoryId)).thenReturn(Optional.empty());
+
+        BaseException exception = assertThrows(BaseException.class,
+                () -> listingService.getRewardContext(listing.getId()));
+
+        assertEquals("CATEGORY_NOT_FOUND", exception.getErrorCode());
+        assertEquals(409, exception.getHttpStatus());
     }
 }

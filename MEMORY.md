@@ -1,5 +1,17 @@
 # YENİDEN — Proje hafızası
 
+## Güncel durum — 2026-09-07 Eco-Coin / Gamification P0
+
+`1d1e05eeec847be758df016363ff1bb7dea23335` değişikliklerinin mobil entegrasyon öncesi P0 güvenilirlik dilimi uygulandı:
+
+- Teslim kabulünde Catalog'dan ilan sahibi, kategori, kategori çarpanı, miktar bandı ve ilan durumu doğrulanıp Handover içine snapshot alınır; Catalog erişilemiyorsa veya veri tutarsızsa işlem fail-closed davranır.
+- Teslim onayı RabbitMQ'ya doğrudan yayınlamak yerine Exchange transactional outbox'a yazar; zamanlanmış publisher başarısız kayıtları pending bırakır.
+- Exchange'in EcoCoin kuyruğunu çakışan argümanlarla yeniden declare etmesi kaldırıldı. EcoCoin handover ve quest consumer kuyruklarının DLQ routing-key'leri açık tanımlandı.
+- Exchange, EcoCoin ve Gamification için Flyway baseline migration'ları eklendi; Hibernate `validate` moduna geçti. Eski transaction açıklaması ve badge referansları veri kaybetmeden taşınır; sabit badge seed'i ve aylık quest provisioner eklendi.
+- Compose servis bağımlılıkları Catalog→Exchange ve Identity→EcoCoin çağrıları için tanımlandı.
+
+Doğrulama: Java 21 ile reactor testlerinde toplam 230 test geçti; 0 failure/error/skipped. Migration SQL'leri PostgreSQL 16 üzerinde hem boş veritabanına hem örnek legacy şemaya uygulandı; legacy transaction açıklaması ve badge ilişkisi korundu. Gerçek RabbitMQ üzerinden tam uçtan uca teslim→coin→gamification smoke testi henüz yoktur. Commit/push/deploy yapılmadı.
+
 ## Güncel durum — 2026-08-30 SMSGate uygulama dilimi
 
 Kullanıcı SMSGate seçti ve uygulamayı başlattı. Aşağıdaki 1–11 bölümler **başlangıç incelemesinin tarihsel fotoğrafıdır**; bu güncel bölüm, kod ve [task listesi](docs/IDENTITY_TASKS.md) artık mevcut durumun kaynağıdır.

@@ -24,7 +24,7 @@ public class QuestRewardOutboxEvent {
     @Column(nullable = false)
     private UUID aggregateId;
 
-    @Lob @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String payload;
 
     @Builder.Default @Column(nullable = false)

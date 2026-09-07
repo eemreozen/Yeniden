@@ -14,6 +14,10 @@ class RabbitMQConfigTest {
     void usesSeparateDeadLetterQueuesForEachInboundEventType() {
         assertEquals(RabbitMQConfig.DEAD_LETTER_QUEUE, config.deadLetterQueue().getName());
         assertEquals(RabbitMQConfig.QUEST_COMPLETED_DEAD_LETTER_QUEUE, config.questCompletedDeadLetterQueue().getName());
+        assertEquals(RabbitMQConfig.HANDOVER_QUEUE,
+                config.handoverQueue().getArguments().get("x-dead-letter-routing-key"));
+        assertEquals(RabbitMQConfig.QUEST_COMPLETED_QUEUE,
+                config.questCompletedQueue().getArguments().get("x-dead-letter-routing-key"));
     }
 
     @Test

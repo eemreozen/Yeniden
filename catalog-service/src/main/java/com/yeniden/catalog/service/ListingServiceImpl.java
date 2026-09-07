@@ -5,6 +5,9 @@ import com.yeniden.catalog.domain.Listing;
 import com.yeniden.catalog.domain.ListingStatus;
 import com.yeniden.catalog.dto.ListingCreateRequest;
 import com.yeniden.catalog.dto.ListingDto;
+import com.yeniden.catalog.dto.ListingRewardContextDto;
+import com.yeniden.catalog.domain.ItemCategory;
+import com.yeniden.catalog.repository.ItemCategoryRepository;
 import com.yeniden.catalog.repository.ListingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,7 @@ import java.util.stream.Collectors;
 public class ListingServiceImpl implements ListingService {
 
     private final ListingRepository listingRepository;
+    private final ItemCategoryRepository itemCategoryRepository;
     private final Random random = new Random();
 
     @Override
@@ -71,6 +75,22 @@ public class ListingServiceImpl implements ListingService {
                 .orElseThrow(() -> new BaseException("İlan bulunamadı!", "LISTING_NOT_FOUND", 404));
 
         return mapToDto(listing);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ListingRewardContextDto getRewardContext(UUID id) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new BaseException("İlan bulunamadı!", "LISTING_NOT_FOUND", 404));
+        ItemCategory category = itemCategoryRepository.findById(listing.getCategoryId())
+                .orElseThrow(() -> new BaseException("İlan kategorisi bulunamadı!", "CATEGORY_NOT_FOUND", 409));
+        return new ListingRewardContextDto(
+                listing.getId(),
+                listing.getOwnerId(),
+                listing.getCategoryId(),
+                java.math.BigDecimal.valueOf(category.getCoinMultiplier()),
+                listing.getQuantityBand().name(),
+                listing.getStatus().name());
     }
 
     @Override

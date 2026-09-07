@@ -1,7 +1,10 @@
 package com.yeniden.exchange.service;
 
 import com.yeniden.common.exception.BaseException;
+import com.yeniden.exchange.client.CatalogRewardContextClient;
+import com.yeniden.exchange.client.ListingRewardContext;
 import com.yeniden.exchange.domain.Handover;
+import com.yeniden.exchange.domain.HandoverOutboxEvent;
 import com.yeniden.exchange.domain.HandoverStatus;
 import com.yeniden.exchange.domain.ListingRequest;
 import com.yeniden.exchange.domain.RequestStatus;
@@ -10,6 +13,9 @@ import com.yeniden.exchange.dto.CreateRequestDto;
 import com.yeniden.exchange.dto.HandoverDto;
 import com.yeniden.exchange.dto.ListingRequestDto;
 import com.yeniden.exchange.repository.HandoverRepository;
+import com.yeniden.exchange.repository.HandoverOutboxEventRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yeniden.exchange.repository.ListingRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,7 +40,9 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     private final ListingRequestRepository requestRepository;
     private final HandoverRepository handoverRepository;
-    private final org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
+    private final HandoverOutboxEventRepository outboxRepository;
+    private final ObjectMapper objectMapper;
+    private final CatalogRewardContextClient catalogRewardContextClient;
     private final Random random = new Random();
 
     @Override
@@ -62,6 +70,14 @@ public class ExchangeServiceImpl implements ExchangeService {
             throw new BaseException("Bu talebi onaylama yetkiniz yok!", "FORBIDDEN", 403);
         }
 
+        ListingRewardContext rewardContext = catalogRewardContextClient.get(request.getListingId());
+        if (!rewardContext.ownerId().equals(ownerId)) {
+            throw new BaseException("İlan sahibi bilgisi uyuşmuyor!", "LISTING_OWNER_MISMATCH", 409);
+        }
+        if (!"PUBLISHED".equals(rewardContext.listingStatus())) {
+            throw new BaseException("Yayında olmayan ilan için teslimat başlatılamaz!", "LISTING_NOT_PUBLISHED", 409);
+        }
+
         request.setStatus(RequestStatus.ACCEPTED);
         requestRepository.save(request);
 
@@ -74,6 +90,10 @@ public class ExchangeServiceImpl implements ExchangeService {
                 .listingId(request.getListingId())
                 .providerId(request.getOwnerId())
                 .receiverId(request.getRequesterId())
+                .categoryId(rewardContext.categoryId())
+                .categoryCoinMultiplier(rewardContext.categoryCoinMultiplier())
+                .quantityBand(rewardContext.quantityBand())
+                .reviewRequired(false)
                 .confirmationCodeHash(codeHash)
                 .rawCodeForReceiver(code)
                 .status(HandoverStatus.PENDING_CODE)
@@ -138,25 +158,35 @@ public class ExchangeServiceImpl implements ExchangeService {
         handover.setConfirmedAt(LocalDateTime.now());
         Handover updated = handoverRepository.save(handover);
 
-        // RabbitMQ üzerinden HandoverConfirmedEvent yayınla (Event-Driven Architecture)
-        try {
-            com.yeniden.common.event.HandoverConfirmedEvent event = com.yeniden.common.event.HandoverConfirmedEvent.builder()
+        com.yeniden.common.event.HandoverConfirmedEvent event = com.yeniden.common.event.HandoverConfirmedEvent.builder()
                     .handoverId(updated.getId())
                     .requestId(updated.getRequestId())
                     .listingId(updated.getListingId())
                     .providerId(updated.getProviderId())
                     .receiverId(updated.getReceiverId())
-                    .earnedPoints(25)
+                    .categoryId(updated.getCategoryId())
+                    .categoryCoinMultiplier(updated.getCategoryCoinMultiplier())
+                    .quantityBand(updated.getQuantityBand())
+                    .reviewRequired(updated.isReviewRequired())
+                    .handoverStatus(updated.getStatus().name())
                     .confirmedAt(updated.getConfirmedAt())
                     .build();
-
-            rabbitTemplate.convertAndSend(com.yeniden.exchange.config.RabbitMQConfig.EXCHANGE, com.yeniden.exchange.config.RabbitMQConfig.ROUTING_KEY, event);
-        } catch (Exception e) {
-            // RabbitMQ gönderim hatası ana işlemi bozmamalıdır
-            System.err.println("RabbitMQ Event gönderme hatası: " + e.getMessage());
-        }
+        writeOutbox(event);
 
         return mapToHandoverDto(updated, null);
+    }
+
+    private void writeOutbox(com.yeniden.common.event.HandoverConfirmedEvent event) {
+        try {
+            outboxRepository.save(HandoverOutboxEvent.builder()
+                    .eventId(event.getHandoverId())
+                    .eventType("HandoverConfirmedEvent")
+                    .aggregateId(event.getHandoverId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build());
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("HandoverConfirmedEvent serialize edilemedi", exception);
+        }
     }
 
     @Override
