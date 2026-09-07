@@ -236,10 +236,13 @@ public class ListingServiceImpl implements ListingService {
     }
 
     private ListingDto mapToDto(Listing listing, Integer distanceMeters) {
+        ItemCategory category = itemCategoryRepository.findById(listing.getCategoryId()).orElse(null);
         return ListingDto.builder()
                 .id(listing.getId())
                 .ownerId(listing.getOwnerId())
                 .categoryId(listing.getCategoryId())
+                .categoryCode(category == null ? null : category.getCode())
+                .categoryName(category == null ? null : category.getName())
                 .title(listing.getTitle())
                 .description(listing.getDescription())
                 .quantityBand(listing.getQuantityBand())

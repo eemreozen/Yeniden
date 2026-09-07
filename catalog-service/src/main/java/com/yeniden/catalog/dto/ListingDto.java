@@ -24,6 +24,8 @@ public class ListingDto {
     private UUID id;
     private UUID ownerId;
     private UUID categoryId;
+    private String categoryCode;
+    private String categoryName;
     private String title;
     private String description;
     private QuantityBand quantityBand;
