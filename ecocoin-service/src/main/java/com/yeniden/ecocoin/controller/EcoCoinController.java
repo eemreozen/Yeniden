@@ -2,24 +2,20 @@ package com.yeniden.ecocoin.controller;
 
 import com.yeniden.common.result.ApiResponse;
 import com.yeniden.ecocoin.dto.CoinEntryDto;
-import com.yeniden.ecocoin.dto.GrantCoinsRequest;
 import com.yeniden.ecocoin.dto.WalletDto;
 import com.yeniden.ecocoin.service.EcoCoinService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.web.bind.annotation.RequestParam;
 
-/**
- * EcoCoin Service REST API Uç Noktaları.
- */
 @RestController
 @RequestMapping("/api/v1/ecocoin")
 @RequiredArgsConstructor
@@ -29,24 +25,18 @@ public class EcoCoinController {
 
     @GetMapping("/health")
     public ResponseEntity<ApiResponse<String>> healthCheck() {
-        return ResponseEntity.ok(ApiResponse.success("EcoCoin Service çalışıyor!"));
-    }
-
-    @PostMapping("/grant")
-    public ResponseEntity<ApiResponse<WalletDto>> grantCoins(@RequestBody GrantCoinsRequest request) {
-        WalletDto dto = ecoCoinService.grantCoins(request);
-        return ResponseEntity.ok(ApiResponse.success("Eco-Coin puan kazanımı işlendi", dto));
+        return ResponseEntity.ok(ApiResponse.success("EcoCoin Service is running"));
     }
 
     @GetMapping("/wallet/{userId}")
-    public ResponseEntity<ApiResponse<WalletDto>> getWallet(@PathVariable("userId") UUID userId) {
-        WalletDto dto = ecoCoinService.getWallet(userId);
-        return ResponseEntity.ok(ApiResponse.success(dto));
+    public ResponseEntity<ApiResponse<WalletDto>> getWallet(@PathVariable UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(ecoCoinService.getWallet(userId)));
     }
 
     @GetMapping("/wallet/{userId}/entries")
-    public ResponseEntity<ApiResponse<List<CoinEntryDto>>> getWalletEntries(@PathVariable("userId") UUID userId) {
-        List<CoinEntryDto> entries = ecoCoinService.getWalletEntries(userId);
-        return ResponseEntity.ok(ApiResponse.success(entries));
+    public ResponseEntity<ApiResponse<Page<CoinEntryDto>>> getWalletEntries(@PathVariable UUID userId,
+                                                                              @RequestParam(defaultValue = "0") int page,
+                                                                              @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(ecoCoinService.getWalletEntries(userId, PageRequest.of(page, size))));
     }
 }

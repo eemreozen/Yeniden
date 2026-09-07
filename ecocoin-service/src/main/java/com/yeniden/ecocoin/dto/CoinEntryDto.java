@@ -21,6 +21,6 @@ public class CoinEntryDto {
     private UUID id;
     private UUID transactionId;
     private String account;
-    private int amount;
+    private long amount;
     private LocalDateTime createdAt;
 }

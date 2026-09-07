@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,7 +21,7 @@ import java.util.UUID;
  * gamification.user_badges tablosunun JPA Entity karşılığı. Kullanıcının kazandığı rozetler.
  */
 @Entity
-@Table(name = "user_badges", schema = "gamification")
+@Table(name = "user_badges", schema = "gamification", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "badge_id"}))
 @Getter
 @Setter
 @Builder
@@ -34,6 +35,9 @@ public class UserBadge {
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
+
+    @Column(name = "badge_id", nullable = false)
+    private UUID badgeId;
 
     @Column(name = "badge_code", nullable = false, length = 50)
     private String badgeCode;

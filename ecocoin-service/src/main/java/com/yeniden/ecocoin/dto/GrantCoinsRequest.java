@@ -8,9 +8,7 @@ import lombok.Setter;
 
 import java.util.UUID;
 
-/**
- * Puan verme isteği DTO.
- */
+/** Internal request used for non-handover grants such as completed quests. */
 @Getter
 @Setter
 @Builder
@@ -18,8 +16,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class GrantCoinsRequest {
     private UUID userId;
-    private UUID handoverId;
     private String idempotencyKey;
-    private int amount; // Hak edilen puan (Örn: 30)
-    private String description;
+    private long amount;
+    private String reason;
+    private String sourceRef;
 }

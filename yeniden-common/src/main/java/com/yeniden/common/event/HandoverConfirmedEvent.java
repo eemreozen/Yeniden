@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -24,6 +25,10 @@ public class HandoverConfirmedEvent implements Serializable {
     private UUID listingId;
     private UUID providerId;
     private UUID receiverId;
-    private int earnedPoints;
+    private UUID categoryId;
+    private BigDecimal categoryCoinMultiplier;
+    private String quantityBand;
+    private boolean reviewRequired;
+    private String handoverStatus;
     private LocalDateTime confirmedAt;
 }

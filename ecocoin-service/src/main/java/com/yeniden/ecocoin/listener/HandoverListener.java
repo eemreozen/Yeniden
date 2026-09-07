@@ -1,8 +1,8 @@
 package com.yeniden.ecocoin.listener;
 
 import com.yeniden.common.event.HandoverConfirmedEvent;
-import com.yeniden.ecocoin.dto.GrantCoinsRequest;
 import com.yeniden.ecocoin.service.EcoCoinService;
+import com.yeniden.ecocoin.dto.CoinGrantResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -15,28 +15,16 @@ public class HandoverListener {
 
     private final EcoCoinService ecoCoinService;
 
-    /**
-     * exchange-service teslimat doğrulandığında RabbitMQ kuyruğuna olay yollar.
-     * ecocoin-service bu olayı asenkron yakalar ve vergi/limit kurallarına uyarak cüzdana EcoCoin tanımlar.
-     */
-    @RabbitListener(queues = "ecocoin.handover.queue")
+    @RabbitListener(queues = "ecocoin.handover.queue", containerFactory = "handoverRabbitListenerContainerFactory")
     public void handleHandoverConfirmed(HandoverConfirmedEvent event) {
-        log.info("RabbitMQ Event Alındı -> HandoverId: {}, ProviderId: {}, Points: {}",
-                event.getHandoverId(), event.getProviderId(), event.getEarnedPoints());
-
-        // Veren kişiye (provider) ödül puanlarını tanımla
-        GrantCoinsRequest request = GrantCoinsRequest.builder()
-                .userId(event.getProviderId())
-                .amount(event.getEarnedPoints())
-                .idempotencyKey("HANDOVER:" + event.getHandoverId())
-                .description("Teslimat Tamamlama Ödülü (İlan ID: " + event.getListingId() + ")")
-                .build();
-
-        try {
-            ecoCoinService.grantCoins(request);
-            log.info("EcoCoin başarıyla hesaba aktarıldı! UserId: {}", event.getProviderId());
-        } catch (Exception e) {
-            log.error("EcoCoin aktarım hatası: {}", e.getMessage());
+        // Propagate failures so the configured retry interceptor can retry and then DLQ the message.
+        CoinGrantResult result = ecoCoinService.processHandover(event);
+        if (result.isGranted()) {
+            log.info("EcoCoin grant completed. handoverId={}, userId={}, amount={}",
+                    event.getHandoverId(), event.getProviderId(), result.getAmount());
+        } else {
+            log.info("EcoCoin grant rejected. handoverId={}, userId={}, reason={}",
+                    event.getHandoverId(), event.getProviderId(), result.getReason());
         }
     }
 }

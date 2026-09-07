@@ -16,9 +16,6 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * ecocoin.entries tablosunun JPA Entity karşılığı. Çift kayıtlı defter (Double-Entry Ledger) satırıdır.
- */
 @Entity
 @Table(name = "entries", schema = "ecocoin")
 @Getter
@@ -27,7 +24,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CoinEntry {
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -36,16 +32,16 @@ public class CoinEntry {
     private UUID transactionId;
 
     @Column(name = "account", nullable = false, length = 100)
-    private String account; // Örn: SYSTEM_MINT, USER:{userId}, SYSTEM_HOLD, SYSTEM_BURN
+    private String account;
 
     @Column(name = "amount", nullable = false)
-    private int amount; // Pozitif (+) alacak, Negatif (-) borç
+    private long amount;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now();
     }
 }

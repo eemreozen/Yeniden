@@ -15,4 +15,5 @@ import java.util.UUID;
 public interface UserBadgeRepository extends JpaRepository<UserBadge, UUID> {
     List<UserBadge> findByUserId(UUID userId);
     Optional<UserBadge> findByUserIdAndBadgeCode(UUID userId, String badgeCode);
+    Optional<UserBadge> findByUserIdAndBadgeId(UUID userId, UUID badgeId);
 }
