@@ -18,9 +18,10 @@ import java.util.UUID;
 @AllArgsConstructor
 public class WalletDto {
     private UUID userId;
-    private int balance;
-    private int dailyEarnedToday;
-    private int monthlyEarnedThisMonth;
-    private int dailyCapRemaining;  // 100 - dailyEarnedToday
-    private int monthlyCapRemaining; // 1200 - monthlyEarnedThisMonth
+    private long balance;
+    private long totalEarned;
+    private long dailyEarnedToday;
+    private long monthlyEarnedThisMonth;
+    private long dailyCapRemaining;
+    private long monthlyCapRemaining;
 }

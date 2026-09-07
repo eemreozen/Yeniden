@@ -30,3 +30,14 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASS:guest}
+    template:
+      retry:
+        enabled: true
+        initial-interval: 500ms
+        max-attempts: 3
+        multiplier: 2
+
+identity:
+  base-url: ${IDENTITY_BASE_URL:http://localhost:8081}
+  connect-timeout-ms: ${IDENTITY_CONNECT_TIMEOUT_MS:1500}
+  read-timeout-ms: ${IDENTITY_READ_TIMEOUT_MS:2500}

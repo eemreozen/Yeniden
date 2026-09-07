@@ -41,8 +41,23 @@ public class CoinTransaction {
     @Column(name = "type", nullable = false)
     private TransactionType type;
 
-    @Column(name = "description", length = 255)
-    private String description;
+    @Column(name = "reason", nullable = false, length = 100)
+    private String reason;
+
+    @Column(name = "source_ref", length = 100)
+    private String sourceRef;
+
+    @Column(name = "counterparty_id")
+    private UUID counterpartyId;
+
+    @Column(name = "beneficiary_id")
+    private UUID beneficiaryId;
+
+    @Column(name = "category_id")
+    private UUID categoryId;
+
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

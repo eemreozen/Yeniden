@@ -1,0 +1,13 @@
+package com.yeniden.ecocoin.dto;
+
+public enum CoinGrantReason {
+    GRANTED,
+    DAILY_CAP_REACHED,
+    MONTHLY_CAP_REACHED,
+    COUNTERPARTY_LIMIT_REACHED,
+    CATEGORY_LIMIT_REACHED,
+    PENDING_REVIEW,
+    MISSING_REWARD_CONTEXT,
+    ACCOUNT_AGE_UNAVAILABLE,
+    DUPLICATE
+}

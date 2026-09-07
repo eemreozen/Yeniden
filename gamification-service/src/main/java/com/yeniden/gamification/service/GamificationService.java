@@ -1,19 +1,21 @@
 package com.yeniden.gamification.service;
 
+import com.yeniden.common.event.CoinsGrantedEvent;
+import com.yeniden.common.event.HandoverConfirmedEvent;
 import com.yeniden.gamification.dto.BadgeDto;
 import com.yeniden.gamification.dto.UserBadgeDto;
 import com.yeniden.gamification.dto.UserLevelDto;
-
+import com.yeniden.gamification.dto.QuestDto;
+import com.yeniden.gamification.dto.LeaderboardDto;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Gamification Service İş Mantığı Arayüzü.
- */
 public interface GamificationService {
+    void handleCoinsGranted(CoinsGrantedEvent event);
+    void handleHandoverConfirmed(HandoverConfirmedEvent event);
     List<BadgeDto> getAllBadges();
     List<UserBadgeDto> getUserBadges(UUID userId);
     UserLevelDto getUserLevel(UUID userId);
-    UserBadgeDto awardBadge(UUID userId, String badgeCode);
-    UserLevelDto addPoints(UUID userId, int points);
+    List<QuestDto> getQuests(String period);
+    List<LeaderboardDto> getLeaderboard(String period);
 }

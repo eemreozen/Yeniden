@@ -41,4 +41,11 @@ public class Badge {
 
     @Column(name = "icon_key", length = 100)
     private String iconKey;
+
+    @Builder.Default
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    @Column(name = "rule", columnDefinition = "jsonb")
+    private String rule;
 }
