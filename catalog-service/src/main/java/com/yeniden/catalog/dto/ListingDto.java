@@ -35,4 +35,6 @@ public class ListingDto {
     private LocalDateTime publishedAt;
     private LocalDateTime expiresAt;
     private LocalDateTime createdAt;
+    /** Yalnızca yakınlık aramasında doldurulur; 100 m'ye yuvarlanır (05-api.md). */
+    private Integer distanceMeters;
 }
