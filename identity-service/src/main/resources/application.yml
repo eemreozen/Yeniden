@@ -49,6 +49,7 @@ spring:
 identity:
   otp:
     secret: ${OTP_HMAC_SECRET:}
+    namespace: ${OTP_NAMESPACE:yeniden:otp}
   tokens:
     issuer: ${JWT_ISSUER:}
     audience: ${JWT_AUDIENCE:yeniden-api}

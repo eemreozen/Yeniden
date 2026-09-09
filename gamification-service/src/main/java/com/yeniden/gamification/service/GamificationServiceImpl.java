@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yeniden.common.event.CoinsGrantedEvent;
 import com.yeniden.common.event.HandoverConfirmedEvent;
+import com.yeniden.common.event.ListingPublishedEvent;
 import com.yeniden.common.event.QuestCompletedEvent;
 import com.yeniden.gamification.domain.*;
 import com.yeniden.gamification.dto.BadgeDto;
@@ -56,6 +57,17 @@ public class GamificationServiceImpl implements GamificationService {
         if (event.isReviewRequired() || "PENDING_REVIEW".equals(event.getHandoverStatus()) || !start("handover-confirmed", event.getHandoverId())) return;
         updateHandoverUser(event.getProviderId(), true, event.getCategoryId());
         updateHandoverUser(event.getReceiverId(), false, event.getCategoryId());
+    }
+
+    @Override @Transactional
+    public void handleListingPublished(ListingPublishedEvent event) {
+        if (event.getListingId() == null || event.getOwnerId() == null
+                || !start("listing-published", event.getListingId())) return;
+        UserGamificationProfile profile = profile(event.getOwnerId());
+        profile.setListingsPublished(profile.getListingsPublished() + 1);
+        profileRepository.save(profile);
+        evaluateBadges(profile);
+        updateQuestProgress(event.getOwnerId(), "LISTINGS_PUBLISHED", 1, event.getCategoryId());
     }
 
     private boolean start(String listener, UUID eventId) {

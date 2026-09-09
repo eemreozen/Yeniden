@@ -11,21 +11,29 @@
 
 ## ⚡ Hızlı Başlangıç (Quick Start)
 
-Tüm altyapıyı (PostgreSQL PostGIS, Redis 7, RabbitMQ 3 ve 7 Mikroservis) Docker Compose ile çalıştırmak için:
+Tüm altyapıyı (PostgreSQL PostGIS, Redis 7, RabbitMQ 3 ve 7 Mikroservis) Docker Compose ile çalıştırmak için Java 21, Docker/Compose ve Docker VM için en az 4 GB RAM kullanın:
 
-```powershell
-# 1. Konteynırları derleyin ve arka planda başlatın
+```sh
+# 1. Dockerfile'ların kopyalayacağı çalıştırılabilir JAR'ları üretin
+./mvnw -DskipTests package
+
+# 2. Her yerel çalışma için güçlü, geçici bir OTP HMAC anahtarı üretin
+export OTP_HMAC_SECRET="$(openssl rand -hex 32)"
+
+# 3. Konteynırları derleyin ve arka planda başlatın
 docker compose up --build -d
 
-# 2. Konteynır durumlarını kontrol edin
+# 4. Konteynır durumlarını kontrol edin
 docker compose ps
 ```
 
+`OTP_HMAC_SECRET` için depoda varsayılan değer bulunmaz. Üretim ortamında ayrıca `prod` profili, HTTPS issuer ve kalıcı RSA anahtar çifti sağlanmalıdır; `local` profili yalnızca Compose geliştirme ortamı içindir.
+
 Birim (Unit) testlerini ve Maven projesini derlemek için:
 
-```powershell
+```sh
 # Tüm mikroservis testlerini çalıştırın
-.\mvnw.cmd test
+./mvnw test
 ```
 
 ---

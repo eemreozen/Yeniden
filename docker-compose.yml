@@ -12,7 +12,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d yeniden_db"]
+      # The image uses a temporary Unix-socket-only server while init scripts run.
+      # TCP readiness prevents application containers from racing that init phase.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d yeniden_db"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -73,6 +75,7 @@ services:
     ports:
       - "8081:8081"
     environment:
+      - SPRING_PROFILES_ACTIVE=local
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=yeniden_db
@@ -82,6 +85,7 @@ services:
       - REDIS_PORT=6379
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
+      - OTP_HMAC_SECRET=${OTP_HMAC_SECRET:?OTP_HMAC_SECRET must contain at least 32 random bytes}
     depends_on:
       postgres:
         condition: service_healthy

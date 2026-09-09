@@ -12,18 +12,22 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: update
-    show-sql: true
-    defer-datasource-initialization: true
+      ddl-auto: validate
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
         default_schema: catalog
 
-  sql:
-    init:
-      mode: always
+  flyway:
+    enabled: true
+    create-schemas: true
+    default-schema: catalog
+    schemas: catalog
+    baseline-on-migrate: true
+    baseline-version: 0
 
   data:
     redis:

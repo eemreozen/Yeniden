@@ -3,6 +3,7 @@ package com.yeniden.gamification.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yeniden.common.event.CoinsGrantedEvent;
 import com.yeniden.common.event.HandoverConfirmedEvent;
+import com.yeniden.common.event.ListingPublishedEvent;
 import com.yeniden.gamification.domain.*;
 import com.yeniden.gamification.repository.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +69,30 @@ class GamificationServiceTest {
         when(profiles.findById(receiver)).thenReturn(Optional.of(receiverProfile)); when(categories.existsById(any())).thenReturn(false);
         service.handleHandoverConfirmed(HandoverConfirmedEvent.builder().handoverId(UUID.randomUUID()).providerId(userId).receiverId(receiver).categoryId(UUID.randomUUID()).categoryCoinMultiplier(BigDecimal.ONE).quantityBand("SINGLE").build());
         assertEquals(1, profile.getConfirmedGiveCount()); assertEquals(1, receiverProfile.getConfirmedTakeCount()); assertEquals(1, profile.getDistinctCategoryCount());
+    }
+
+    @Test void listingPublishedUpdatesProfileAndQuestOnlyOnce() {
+        Quest quest = Quest.builder().id(UUID.randomUUID()).period(java.time.YearMonth.now().toString())
+                .code("L1").title("Listing").targetMetric("LISTINGS_PUBLISHED").targetValue(2).rewardCoins(5).build();
+        QuestProgress qp = QuestProgress.builder().userId(userId).questId(quest.getId()).build();
+        when(quests.findByPeriod(anyString())).thenReturn(List.of(quest));
+        when(progress.findByUserIdAndQuestId(userId, quest.getId())).thenReturn(Optional.of(qp));
+        when(processed.existsById(any())).thenReturn(false, true);
+        ListingPublishedEvent event = ListingPublishedEvent.builder().listingId(UUID.randomUUID())
+                .ownerId(userId).categoryId(UUID.randomUUID()).build();
+
+        service.handleListingPublished(event);
+        service.handleListingPublished(event);
+
+        assertEquals(1, profile.getListingsPublished());
+        assertEquals(1, qp.getCurrentValue());
+        verify(profiles, times(1)).save(profile);
+    }
+
+    @Test void invalidListingPublishedEventIsIgnored() {
+        service.handleListingPublished(ListingPublishedEvent.builder().listingId(UUID.randomUUID()).build());
+        verify(processed, never()).save(any());
+        verify(profiles, never()).save(any());
     }
 
     @Test void handoverWithoutCategoryContextUpdatesCountsSafely() {
