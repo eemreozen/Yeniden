@@ -56,11 +56,21 @@ Her kayıt: bağlam → karar → sonuç → reddedilen alternatif.
 
 ---
 
-## ADR-006 — AI sınıflandırma port-adapter ile ertelendi (WasteAI Service)
+## ADR-006 — WasteAI: SOLID Prensipleriyle Çoklu Sağlayıcı (Multi-Provider) ve Logprob Güven Mimarisi
 
-**Bağlam.** Fotoğraftan atık türü tanıma ürünün vitrin özelliği ama MVP için gerekli değil ve eğitim verisi henüz yok.
+**Bağlam.** Fotoğraftan atık türü ve sağlamlık tespiti, kullanıcının eşyasını doğru kategorilendirmesi ve geri dönüşüm/yeniden kullanım ayrımını otomatikleştirmesi açısından kritik bir yetenektir. Ancak tek bir yapay zeka modeline veya harici bir bulut API'sine bağımlı olmak; ağ kesintileri, API maliyetleri, gecikme ve yerel donanım kısıtları (örn. 6GB VRAM GPU) açısından risk barındırır. Ayrıca LLM'lerin serbest metin olarak ürettiği güven skorları halüsinasyona açıktır ve gerçeği yansıtmaz.
 
-**Karar.** `WasteClassifier` arayüzü `wasteai-service` altında tanımlanır, MVP'de kural tabanlı bir stub döner. Çağrı senkron ama **zorunlu değildir**: 2 saniye zaman aşımı, hata durumunda akış önerisiz devam eder.
+**Karar.**
+1. **SOLID & Arayüz Ayrımı (Interface Segregation & DIP):** Model entegrasyonu `AiModelProvider` soyutlaması arkasına alındı. Yüksek seviyeli orkestrasyon servisi somut sınıflara değil, arayüze bağımlıdır.
+2. **Çoklu Sağlayıcı & Failover Zinciri (Composite Pattern):**
+   - **`RemoteVisionApiProvider`:** Harici Vision API sağlayıcısı (Google Gemini 1.5 Flash / OpenAI GPT-4o-mini). Yüksek doğruluk gerektiren bulut modu.
+   - **`LocalVisionModelProvider`:** Yerel donanım dostu model sağlayıcısı (Ollama / Qwen2-VL, RTX 4050 6GB VRAM optimize). Ağdan bağımsız, sıfır maliyetli yerel çıkarım.
+   - **`RuleBasedFallbackProvider`:** Deterministik, sıfır bağımlılıklı kural tabanlı acil durum sağlayıcısı. Tüm AI altyapısı kapalı olsa bile sistemi ayakta tutar.
+3. **Logprob Tabanlı Güven Skoru (Confidence Calculator):** Modelin halüsinasyon yapmasını önlemek amacıyla güven skoru, modelin ürettiği karar token'larının log olasılıkları ($P = \exp(\text{logprob})$) üzerinden matematiksel olarak hesaplanır.
+4. **%75 Moderasyon Eşiği (`requires_moderation`):** Yapay zekanın güven skoru %75'in altına düştüğünde (`confidence < 0.75`), ilan otomatik olarak `requires_moderation=true` ile işaretlenir ve `moderation-service` inceleme kuyruğuna (`PENDING_REVIEW`) aktarılır.
+5. **Geriye Dönük Uyumluluk:** Eski sistemleri kırmamak için `WasteClassifierStubImpl` adaptör deseniyle `WasteClassifierCompositeService`'e bağlandı.
+
+**Sonuç.** Kesintisiz çalışma (yüksek dayanıklılık), model sağlayıcılarından bağımsızlık, donanım kaynaklarının verimli kullanımı ve insan moderatör denetimiyle desteklenen %100 güvenli ilan akışı sağlandı.
 
 ---
 

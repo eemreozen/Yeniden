@@ -176,7 +176,94 @@ Yanıt öğesi:
 |---|---|---|
 | `GET` | `/collection-points/nearby` | `?lat&lon&type=&limit=` → en yakın noktalar |
 | `GET` | `/categories` | Kategori ağacı, `reusable` bayrağıyla |
-| `POST` | `/waste-ai/classify` | `{objectKey}` → `{categoryId, confidence, recommendation, modelVersion}` |
+| `POST` | `/waste-ai/classify` | Fotoğraf analizi (URL veya Base64) → Atık türü, logprob güveni, moderasyon durumu, Eco-Coin tahmini ve geri dönüşüm rehberi |
+
+#### `POST /waste-ai/classify` İstek & Yanıt Şeması
+
+**İstek Gövdesi (JSON):**
+```json
+{
+  "image_url": "https://s3.yeniden.org/photos/listing-984.jpg",
+  "image_base64": null
+}
+```
+
+**Başarılı Yanıt (Örnek 1: Güven >= %75, REUSE — Moderasyon Gerekmez):**
+```json
+{
+  "status": "SUCCESS",
+  "confidence": 0.89,
+  "requires_moderation": false,
+  "moderation_reason": null,
+  "detected_item": {
+    "name": "Ahşap Sandalye",
+    "category_id": "CAT_FURNITURE_CHAIR",
+    "main_category": "Mobilya",
+    "sub_category": "Sandalye",
+    "condition": "USED_GOOD",
+    "estimated_material": "WOOD",
+    "suggested_action": "REUSE"
+  },
+  "ecocoin_estimate": {
+    "base_coin": 35,
+    "confidence_multiplier": 1.0,
+    "total_estimated_coin": 35,
+    "calculation_notes": "Standart mobilya kategorisi taban puanı"
+  },
+  "recycle_fallback": null
+}
+```
+
+**Başarılı Yanıt (Örnek 2: Güven < %75 — Otomatik Moderasyon Tetiklendi):**
+```json
+{
+  "status": "SUCCESS",
+  "confidence": 0.62,
+  "requires_moderation": true,
+  "moderation_reason": "CONFIDENCE_BELOW_THRESHOLD: Confidence 0.62 is below the required 75% threshold",
+  "detected_item": {
+    "name": "Eski Elektronik Parça",
+    "category_id": "CAT_ELECTRONICS_GENERIC",
+    "main_category": "Elektronik",
+    "sub_category": "Genel Parça",
+    "condition": "USED_FAIR",
+    "estimated_material": "ELECTRONIC",
+    "suggested_action": "REUSE"
+  },
+  "ecocoin_estimate": {
+    "base_coin": 50,
+    "confidence_multiplier": 0.62,
+    "total_estimated_coin": 31,
+    "calculation_notes": "Düşük AI güveni nedeniyle moderatör onayından sonra kesinleşir"
+  },
+  "recycle_fallback": null
+}
+```
+
+**Başarılı Yanıt (Örnek 3: RECYCLE — Geri Dönüşüm Rehberi):**
+```json
+{
+  "status": "SUCCESS",
+  "confidence": 0.94,
+  "requires_moderation": false,
+  "moderation_reason": null,
+  "detected_item": {
+    "name": "Kırık Cam Şişe",
+    "category_id": "CAT_GLASS_BOTTLE",
+    "main_category": "Cam",
+    "sub_category": "Şişe",
+    "condition": "DAMAGED",
+    "estimated_material": "GLASS",
+    "suggested_action": "RECYCLE"
+  },
+  "ecocoin_estimate": null,
+  "recycle_fallback": {
+    "suggested_container_type": "Cam Kumbarası",
+    "instructions": "Şişeyi kapaksız olarak en yakın yeşil/beyaz cam kumbarasına atınız.",
+    "warning": "Kırık cam yaralanma riski taşır, torba içinde dikkatle taşıyınız."
+  }
+}
+```
 
 ### moderation (`moderation-service`)
 

@@ -8,6 +8,7 @@ import lombok.Setter;
 
 /**
  * Görüntü sınıflandırma isteği DTO.
+ * Hem S3 URL'si hem de doğrudan Base64 kodlanmış görüntü desteklenir.
  */
 @Getter
 @Setter
@@ -15,7 +16,12 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ClassifyImageRequest {
+
     private String imageUrl;
+
+    private String imageBase64;
+
     private Double latitude;
+
     private Double longitude;
 }

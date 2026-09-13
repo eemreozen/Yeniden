@@ -4,3 +4,13 @@ server:
 spring:
   application:
     name: wasteai-service
+
+wasteai:
+  local:
+    enabled: ${WASTEAI_LOCAL_ENABLED:true}
+    base-url: ${WASTEAI_LOCAL_URL:http://localhost:11434}
+    model: ${WASTEAI_LOCAL_MODEL:qwen2-vl}
+  remote:
+    enabled: ${WASTEAI_REMOTE_ENABLED:false}
+    api-key: ${WASTEAI_REMOTE_API_KEY:}
+    endpoint: ${WASTEAI_REMOTE_ENDPOINT:https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent}

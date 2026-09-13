@@ -92,8 +92,13 @@ Push, SMS ve e-posta gönderimi. Event dinler, şablon uygular, sağlayıcıya g
 ### `moderation-service` (Port 8087)
 Şikayet kaydı, uygunsuz ilan gizleme, şüpheli teslim inceleme kuyruğu, moderatör kararlarının denetim kaydı.
 
-### `wasteai-service` (Port 8088)
-Fotoğraftan atık türü tahmini ve "yeniden kullanılabilir mi (`REUSE`), geri mi dönüştürülmeli (`RECYCLE`)" önerisi. Port + adapter olarak tanımlanır; kural tabanlı stub döner.
+### `wasteai-service` (Port 8086)
+Fotoğraftan atık/eşya türü tahmini, sağlamlık analizi ve "yeniden kullanılabilir mi (`REUSE`), geri mi dönüştürülmeli (`RECYCLE`)" kararı üreten yapay zeka mikroservisi.
+
+- **SOLID & Çift Motorlu Hibrit Mimari:** `AiModelProvider` soyutlaması üzerinden marka/model bağımsız jenerik mimari (`RemoteVisionApiProvider`, `LocalVisionModelProvider`, `RuleBasedFallbackProvider`).
+- **Failover Zinciri:** `WasteClassifierCompositeService` öncelik sırasına göre önce Harici Bulut API'yi (Gemini/GPT), ulaşılamazsa Yerel GPU Modelini (Ollama / Qwen2-VL), her ikisi de kapalıysa Kural Tabanlı Yedeği (`RuleBasedFallbackProvider`) çalıştırır.
+- **Token Olasılığı (Logprob) Güven Skoru:** Modelin güven skoru halüsinasyon riski taşıyan serbest metin yerine karar token'ının log olasılığından matematiksel olarak ($P = e^{\text{logprob}}$) hesaplanır.
+- **Otomatik Moderasyon Entegrasyonu:** Güven skoru %75 eşiğinin altında kaldığında (`confidence < 0.75`) yanıtta `requires_moderation=true` bayrağı set edilir ve ilan `moderation-service` inceleme kuyruğuna sevk edilir.
 
 ---
 

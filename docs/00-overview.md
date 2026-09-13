@@ -50,9 +50,9 @@ flowchart TB
         exchange[exchange-service :8083]
         ecocoin[ecocoin-service :8084]
         gamification[gamification-service :8085]
-        notification[notification-service :8086]
-        moderation[moderation-service :8087]
-        wasteai[wasteai-service :8088]
+        notification[notification-service (Planlanan)]
+        moderation[moderation-service (Planlanan)]
+        wasteai[wasteai-service :8086]
     end
 
     subgraph infra[Altyapı]

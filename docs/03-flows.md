@@ -4,7 +4,7 @@ Diyagramlardaki bileşen adları [`01-modules.md`](01-modules.md)'deki mikroserv
 
 ## 1. İlan verme
 
-Fotoğraf API üzerinden geçmez; istemci presigned URL ile doğrudan object storage'a yükler. AI önerisi **tavsiye niteliğindedir** ve akışı bloklamaz.
+Fotoğraf API üzerinden geçmez; istemci presigned URL ile doğrudan object storage'a yükler. AI önerisi **tavsiye niteliğindedir** ve akışı bloklamaz. Yapay zeka servisimiz (`wasteai-service`), SOLID multi-provider (Remote API -> Local Ollama -> RuleBasedFallback) yapısıyla çalışır ve token logprob olasılıkları üzerinden güven skoru üretir.
 
 ```mermaid
 sequenceDiagram
@@ -13,6 +13,7 @@ sequenceDiagram
     participant C as catalog-service
     participant S3 as Object storage
     participant AI as wasteai-service
+    participant M as moderation-service
 
     G->>API: POST /listings/photos/upload-url
     API->>C: presigned URL üret
@@ -21,31 +22,41 @@ sequenceDiagram
     G->>S3: PUT fotoğraf (doğrudan)
     S3-->>G: 200
 
-    G->>API: POST /waste-ai/classify {objectKey}
-    API->>AI: classify(photoRef)
-    alt Model cevap verdi
-        AI-->>API: {kategori, güven, REUSE|RECYCLE}
-        API-->>G: öneri gösterilir
-    else Zaman aşımı / hata
-        AI--xAPI: timeout (2 sn)
-        API-->>G: öneri yok, akış devam eder
+    G->>API: POST /waste-ai/classify {image_url, image_base64}
+    API->>AI: classifyImage(request)
+    Note over AI: Provider Zinciri (Remote API -> Local Ollama -> RuleBased)<br/>Logprob Güven Hesabı: P = exp(logprob)
+    alt Model Başarılı ve Güven >= %75
+        AI-->>API: {confidence: >=0.75, requires_moderation: false, detected_item, ecocoin_estimate}
+        API-->>G: Akıllı öneri ve Eco-Coin tahmini gösterilir
+    else Model Başarılı ancak Güven < %75
+        AI-->>API: {confidence: <0.75, requires_moderation: true, moderation_reason: "CONFIDENCE_BELOW_THRESHOLD", detected_item}
+        API-->>G: Öneri gösterilir + "Moderatör incelemesi gerekecek" uyarısı
+    else Zaman aşımı / hata (Fallback devrede)
+        AI-->>API: RuleBasedFallback sonucu veya 2 sn timeout
+        API-->>G: Güvenli varsayılan / manuel kategori seçimi
     end
 
     alt Öneri RECYCLE ve kategori reusable=false
         G->>API: GET /collection-points/nearby
-        Note over G,API: Akış 5'e dallanır
-    else Yeniden kullanılabilir
+        Note over G,API: Akış 5'e dallanır (Geri Dönüşüm)
+    else Yeniden kullanılabilir (REUSE)
         G->>API: POST /listings {kategori, başlık, miktar, durum, konum, fotoğraflar}
         C->>C: approx_point = jitter(gerçek nokta, ~250m) — bir kez hesaplanır
         C->>C: status=DRAFT, expires_at=now+21g
         G->>API: POST /listings/{id}/publish
-        C->>C: status=PUBLISHED (en az 1 foto + kategori kontrolü)
-        C->>C: outbox: ListingPublished
-        C-->>API: 200
+        alt requires_moderation == true (AI Güven < %75)
+            C->>C: status=PENDING_REVIEW
+            C->>M: ReviewItemQueued (Düşük AI Güveni)
+            M-->>G: İlanınız moderatör onayına alındı
+        else requires_moderation == false (Güvenli)
+            C->>C: status=PUBLISHED (en az 1 foto + kategori kontrolü)
+            C->>C: outbox: ListingPublished
+            C-->>API: 200 (Doğrudan yayında)
+        end
     end
 ```
 
-Yayın anında `ListingPublished` outbox/event broker'a yazılır; `gamification-service` bunu işler.
+Yayın anında `ListingPublished` outbox/event broker'a yazılır; `gamification-service` bunu işler. Düşük güvenli ilanlar ise moderatör onayından sonra `ListingPublished` event'i tetikler.
 
 ## 2. Yakındaki ilanların aranması
 
@@ -173,10 +184,10 @@ sequenceDiagram
     participant C as catalog-service (recycling)
     participant DB as PostGIS
 
-    U->>API: POST /waste-ai/classify {objectKey}
-    API->>AI: classify
-    AI-->>API: {tür: "kırık cam", öneri: RECYCLE}
-    API-->>U: "Bu paylaşıma uygun değil, geri dönüşüme yönlendirilmeli"
+    U->>API: POST /waste-ai/classify {image_url, image_base64}
+    API->>AI: classifyImage(request)
+    AI-->>API: {detected_item: {suggested_action: "RECYCLE"}, recycle_fallback: {suggested_container_type: "Cam Kumbarası"}}
+    API-->>U: "Bu paylaşıma uygun değil, geri dönüşüme yönlendirilmeli" + Ayrıştırma Yönergesi
 
     U->>API: GET /collection-points/nearby?lat&lon&type=glass&limit=5
     API->>C: findNearby

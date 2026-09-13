@@ -1,13 +1,13 @@
 package com.yeniden.wasteai.service;
 
+import com.yeniden.wasteai.dto.ActionType;
 import com.yeniden.wasteai.dto.ClassifyImageRequest;
 import com.yeniden.wasteai.dto.ClassifyImageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class WasteAIServiceTest {
 
@@ -19,7 +19,7 @@ class WasteAIServiceTest {
     }
 
     @Test
-    @DisplayName("Karton kutu içeren resmi sınıflandırma testi")
+    @DisplayName("Karton kutu içeren resmi sınıflandırma testi (Yeni ve Eski Metot Uyumu)")
     void classifyImage_CartonBox_Success() {
         ClassifyImageRequest request = new ClassifyImageRequest();
         request.setImageUrl("https://example.com/box.jpg");
@@ -27,8 +27,12 @@ class WasteAIServiceTest {
         ClassifyImageResponse result = wasteClassifier.classify(request);
 
         assertNotNull(result);
-        assertEquals("CARTON_BOX", result.getSuggestedCategoryCode());
-        assertEquals(30, result.getEstimatedPoints());
+        assertEquals("CARDBOARD_BOX", result.getSuggestedCategoryCode());
+        assertEquals("CARDBOARD_BOX", result.getDetectedItem().getCategory());
+        assertEquals(ActionType.REUSE, result.getDetectedItem().getSuggestedAction());
+        assertEquals(15, result.getEstimatedPoints());
+        assertEquals(15, result.getEcocoinEstimate().getEstimatedReward());
+        assertTrue(result.getConfidence() >= 0.75);
     }
 
     @Test
@@ -41,6 +45,8 @@ class WasteAIServiceTest {
 
         assertNotNull(result);
         assertEquals("GLASS", result.getSuggestedCategoryCode());
+        assertEquals("GLASS", result.getDetectedItem().getCategory());
+        assertEquals(ActionType.REUSE, result.getDetectedItem().getSuggestedAction());
         assertEquals(20, result.getEstimatedPoints());
     }
 }

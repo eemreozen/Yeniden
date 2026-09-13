@@ -21,7 +21,7 @@ Fazlar özellik listesi değil, **çalışan dilim** olarak tanımlanmıştır. 
 | Eco-Coin kazanımı | Double-entry ledger, tavanlar, temel risk sinyalleri (`ecocoin-service`) |
 | Zamanlanmış işler | Rezervasyon ve ilan süre dolumu, gece ledger denetimi |
 | Basit moderasyon | Şikayet kaydı + `PENDING_REVIEW` kuyruğu (`moderation-service`) |
-| `wasteai-service` stub | Kural tabanlı stub |
+| `wasteai-service` | SOLID Çoklu Sağlayıcı mimarisi (Remote Vision API + Local Ollama/Qwen2-VL + RuleBasedFallback), token logprob güven hesabı, %75 eşikli moderasyon yönlendirmesi |
 | `api-gateway` | Spring Cloud Gateway (Port 8080) reaktif yönlendirme kapısı |
 | `redis` | Redis 7 (Port 6379) OTP önbellekleme ve TTL doğrulama altyapısı |
 | `rabbitmq` | RabbitMQ (Port 5672/15672) Asenkron olay tabanlı iletişim altyapısı (`HandoverConfirmedEvent`) |
@@ -32,8 +32,9 @@ Fazlar özellik listesi değil, **çalışan dilim** olarak tanımlanmıştır. 
 - Ledger denetim işi sıfır sapma raporluyor.
 - Aynı `HandoverConfirmed` event'i iki kez işlendiğinde puan bir kez veriliyor (test edilmiş).
 - İlan detayında `exact_point` yetkisiz kullanıcıya dönmüyor (test edilmiş).
+- `wasteai-service` atık fotoğraflarını çoklu sağlayıcı failover mimarisiyle sınıflandırıp %75 güven kontrolüne göre moderasyon kuyruğuna iletebiliyor (test edilmiş).
 
-**Kapsam dışı:** rozet, seviye, görev, sıralama, ödül harcaması, gerçek AI modeli (yalnızca stub var), çoklu şehir.
+**Kapsam dışı:** rozet, seviye, görev, sıralama, ödül harcaması, çoklu şehir.
 
 ## Faz 2 — Alışkanlık ve karşılık
 
