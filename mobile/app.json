@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "atik",
+    "displayName": "atik",
+    "slug": "atik",
+    "version": "1.0.0",
+    "android": {
+      "package": "com.atik.app"
+    },
+    "ios": {
+      "bundleIdentifier": "com.atik.app"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}
